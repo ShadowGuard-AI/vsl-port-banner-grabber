@@ -1,7 +1,6 @@
 import argparse
 import socket
-import nmap
-import tldextract
+import sys
 import logging
 
 # Configure logging
@@ -56,7 +55,7 @@ def get_service_banner(ip, port):
             s.settimeout(3)  # Timeout after 3 seconds
             s.connect((ip, port))
             s.sendall(b"\r\n")  # Send a blank request
-            banner = s.recv(1024).decode().strip()
+            banner = s.recv(1024).decode(errors="replace").strip()
             return banner if banner else "No banner retrieved."
     except (socket.timeout, ConnectionRefusedError, socket.error) as e:
         return f"Error: {str(e)}"
@@ -112,11 +111,18 @@ def main():
         target_ip = resolve_target(args.target)
     except ValueError as e:
         logging.error(e)
-        return
+        sys.exit(1)
 
     # Determine ports to scan
     if args.ports:
-        ports = [int(p.strip()) for p in args.ports.split(",")]
+        try:
+            ports = [int(p.strip()) for p in args.ports.split(",")]
+        except ValueError:
+            logging.error(f"Invalid port list: {args.ports!r}. Ports must be integers separated by commas.")
+            sys.exit(1)
+        if any(port < 1 or port > 65535 for port in ports):
+            logging.error(f"Invalid port list: {args.ports!r}. Ports must be between 1 and 65535.")
+            sys.exit(1)
     else:
         # Default to common ports if none are provided
         ports = [80, 443, 22, 21, 25, 110, 143, 3306, 8080]

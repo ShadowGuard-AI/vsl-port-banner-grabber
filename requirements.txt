@@ -1,4 +1,1 @@
-```
-nmap>=0.8.1
-tldextract>=3.4.4
-```
+# No third-party dependencies. This tool uses only the Python standard library.
