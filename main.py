@@ -54,10 +54,17 @@ def get_service_banner(ip, port):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(3)  # Timeout after 3 seconds
             s.connect((ip, port))
+            # I speak first, with a blank line. A service waiting for a real request, HTTP being the
+            # common one, answers that empty line with an error or with silence, so the banner I
+            # record is shaped by my probe and not only by the service.
             s.sendall(b"\r\n")  # Send a blank request
+            # One recv is all I take. A banner split across packets comes back as its first piece
+            # only, and anything past 1024 bytes is cut off mid line.
             banner = s.recv(1024).decode(errors="replace").strip()
             return banner if banner else "No banner retrieved."
     except (socket.timeout, ConnectionRefusedError, socket.error) as e:
+        # Refused, filtered, and connected but silent all land in this one Error string. Their only
+        # difference is the operating system wording pasted after the colon.
         return f"Error: {str(e)}"
 
 
@@ -76,6 +83,8 @@ def scan_ports(target, ports):
     for port in ports:
         logging.info(f"Scanning port {port}...")
         banner = get_service_banner(target, int(port))
+        # The results are keyed by port, so a port listed twice is probed twice and stored once.
+        # The second answer quietly replaces the first, and the output never shows it happened.
         results[port] = banner
     return results
 
